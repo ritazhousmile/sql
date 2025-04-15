@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Many-to-Many Relationship Manager</title>
+    <style>
+        :root {
+            --primary-color: #4682B4;
+            --primary-dark: #365ebf;
+            --success-color: #4CAF50;
+            --danger-color: #f44336;
+            --neutral-color: #f0f0f0;
+            --border-color: #ccc;
+            --text-color: #333;
+            --light-text: #666;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h2 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+        
+        .instructions {
+            padding: 10px 20px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .search-filter-bar {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            min-width: 150px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        table th {
+            background-color: #f0f0f0;
+            position: sticky;
+            top: 0;
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        
+        .checkbox-cell {
+            width: 40px;
+            text-align: center;
+        }
+        
+        table tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        table tr.selected {
+            background-color: #e6f2ff;
+        }
+        
+        .disabled-row input:not([type="checkbox"]), 
+        .disabled-row select, 
+        .disabled-row textarea {
+            background-color: #f5f5f5;
+            color: #999;
+            pointer-events: none;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .pagination-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .pagination-controls button {
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
+            background-color: white;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .pagination-controls button.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-dark);
+        }
+        
+        .pagination-controls button:hover:not(.active) {
+            background-color: var(--neutral-color);
+        }
+        
+        .per-page-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .action-buttons {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .left-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .right-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button.primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        button.success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        button.neutral {
+            background-color: var(--neutral-color);
+            color: var(--text-color);
+        }
+        
+        button.danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+        }
+        
+        .footer-row td {
+            font-weight: bold;
+            border-top: 2px solid var(--border-color);
+            background-color: #f9f9f9;
+        }
+
+        .total-label {
+            text-align: right;
+        }
+        
+        .numeric-cell {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Add / Remove Assignments</h2>
+        </div>
+        
+        <div class="instructions">
+            Select each assignment you wish to add.
+        </div>
+        
+        <div class="search-filter-bar">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Type to search...">
+            </div>
+            <div class="filter-controls" id="filter-controls">
+                <!-- Dynamic filters will be added here -->
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table id="relationship-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell">Select</th>
+                        <th>Item</th>
+                        <!-- Additional columns will be added here -->
+                    </tr>
+                </thead>
+                <tbody id="relationship-tbody">
+                    <!-- Rows will be populated dynamically -->
+                </tbody>
+                <tfoot id="table-footer" style="display: none;">
+                    <tr>
+                        <td colspan="2" class="total-label">Total:</td>
+                        <!-- Additional total cells will be added here -->
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div class="pagination">
+            <div class="pagination-controls" id="pagination-controls">
+                <!-- Pagination buttons will be added here -->
+            </div>
+            <div class="per-page-control">
+                <label for="per-page-select">Per page:</label>
+                <select id="per-page-select">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <div class="left-buttons">
+                <button id="select-all-btn" class="primary">Select All/None</button>
+            </div>
+            <div class="right-buttons">
+                <button id="cancel-btn" class="neutral">Cancel</button>
+                <button id="save-btn" class="success">Save</button>
+            </div>
+        </div>
+        
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Many-to-Many Relationship Manager
+         * 
+         * This script provides functionality similar to the QuickBase ManyToMany component
+         * but designed to work with HighSystems and PostgreSQL.
+         */
+        
+        // Configuration object - modify these settings to match your HighSystems setup
+        const config = {
+            // API endpoints - replace with your actual HighSystems API endpoints
+            api: {
+                // Get all available items with their selection status for the current parent
+                getItems: '/api/relationships/items',
+                
+                // Get existing relationships for the current parent
+                getRelationships: '/api/relationships/current',
+                
+                // Save relationship changes
+                saveChanges: '/api/relationships/save',
+                
+                // API request headers
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Add authentication headers if needed
+                    // 'Authorization': 'Bearer YOUR_TOKEN'
+                }
+            },
+            
+            // The ID of the parent record
+            parentId: getParentIdFromUrl(),
+            
+            // Display settings
+            display: {
+                // Title shown in the header
+                title: 'Add / Remove Assignments',
+                
+                // Instructions shown below the header
+                instructions: 'Select each assignment you wish to add.',
+                
+                // Label for the lookup items
+                itemLabel: 'Item',
+                
+                // Label for the checkbox column
+                checkboxLabel: 'Select',
+                
+                // Button labels
+                selectAllBtn: 'Select All/None',
+                saveBtn: 'Save',
+                cancelBtn: 'Cancel',
+                
+                // Whether to show the filter controls
+                showFilters: true,
+                
+                // Whether to show the search box
+                showSearch: true,
+                
+                // Default items per page
+                defaultPerPage: 50
+            },
+            
+            // Behavior settings
+            behavior: {
+                // Whether to disable rows that are not selected
+                disableUncheckedRows: true,
+                
+                // Whether to group selected items at the top
+                groupSelectedAtTop: true,
+                
+                // Whether to allow multiple relationships to the same item
+                // If false, there can only be one relationship per item
+                allowMultipleChildren: false,
+                
+                // When true, clicking Cancel with unsaved changes will prompt for confirmation
+                confirmCancel: true,
+                
+                // Redirect URL after save/cancel
+                // If null, stays on the same page
+                redirectUrl: null,
+                
+                // Calculate totals for numeric columns
+                calculateTotals: true
+            },
+            
+            // Column definitions
+            columns: [
+                // Example columns - replace with your actual column definitions
+                {
+                    label: 'Notes',
+                    fieldName: 'notes',
+                    type: 'text',
+                    width: '200px',
+                    // Optional: format the value for display
+                    formatValue: (value) => value || '',
+                    // Optional: validate the input
+                    validate: (value) => true,
+                    // Optional: custom CSS class for the cell
+                    class: ''
+                },
+                {
+                    label: 'Date',
+                    fieldName: 'assignment_date',
+                    type: 'date',
+                    width: '150px',
+                    // Optional: default value for new items
+                    defaultValue: new Date().toISOString().split('T')[0]
+                },
+                {
+                    label: 'Status',
+                    fieldName: 'status',
+                    type: 'select',
+                    width: '150px',
+                    options: [
+                        { value: 'active', label: 'Active' },
+                        { value: 'pending', label: 'Pending' },
+                        { value: 'completed', label: 'Completed' }
+                    ],
+                    defaultValue: 'active'
+                },
+                {
+                    label: 'Amount',
+                    fieldName: 'amount',
+                    type: 'number',
+                    width: '100px',
+                    defaultValue: 0,
+                    // For numeric columns, you can specify formatting
+                    formatValue: (value) => value ? parseFloat(value).toFixed(2) : '0.00',
+                    // Optional: calculate totals for this column
+                    calculateTotal: true,
+                    class: 'numeric-cell'
+                }
+            ],
+            
+            // Filter definitions
+            filters: [
+                // Example filters - replace with your actual filter definitions
+                {
+                    label: 'Status',
+                    fieldName: 'status',
+                    type: 'select',
+                    options: [
+                        { value: '', label: 'All Statuses' },
+                        { value: 'active', label: 'Active' },
+                        { value: 'pending', label: 'Pending' },
+                        { value: 'completed', label: 'Completed' }
+                    ],
+                    defaultValue: ''
+                },
+                {
+                    label: 'Category',
+                    fieldName: 'category',
+                    type: 'select',
+                    options: [
+                        { value: '', label: 'All Categories' },
+                        { value: 'A', label: 'Category A' },
+                        { value: 'B', label: 'Category B' },
+                        { value: 'C', label: 'Category C' }
+                    ],
+                    defaultValue: ''
+                }
+            ]
+        };
+        
+        // State management
+        const state = {
+            items: [],               // All available items
+            relationships: [],       // Current relationships
+            filteredItems: [],       // Items after filtering
+            displayedItems: [],      // Items currently displayed (after pagination)
+            selectedItems: new Set(),// Set of selected item IDs
+            changes: {              // Track changes for saving
+                added: [],
+                updated: [],
+                deleted: []
+            },
+            search: '',              // Current search term
+            filters: {},             // Current filter values
+            pagination: {
+                currentPage: 1,
+                itemsPerPage: config.display.defaultPerPage,
+                totalPages: 1
+            },
+            selectAll: false,        // Whether "Select All" is active
+            changesMade: false,      // Whether any changes have been made
+            loading: false           // Whether data is being loaded
+        };
+        
+        // DOM elements
+        const elements = {
+            table: document.getElementById('relationship-table'),
+            tbody: document.getElementById('relationship-tbody'),
+            tableFooter: document.getElementById('table-footer'),
+            searchInput: document.getElementById('search-input'),
+            filterControls: document.getElementById('filter-controls'),
+            paginationControls: document.getElementById('pagination-controls'),
+            perPageSelect: document.getElementById('per-page-select'),
+            selectAllBtn: document.getElementById('select-all-btn'),
+            saveBtn: document.getElementById('save-btn'),
+            cancelBtn: document.getElementById('cancel-btn'),
+            loadingOverlay: document.getElementById('loading-overlay')
+        };
+        
+        /**
+         * Initialize the component
+         */
+        function init() {
+            setupEventListeners();
+            setupColumnHeaders();
+            setupFilterControls();
+            loadData();
+        }
+        
+        /**
+         * Set up event listeners for the UI components
+         */
+        function setupEventListeners() {
+            // Search input
+            elements.searchInput.addEventListener('input', handleSearch);
+            
+            // Per page select
+            elements.perPageSelect.addEventListener('change', handlePerPageChange);
+            
+            // Select All button
+            elements.selectAllBtn.addEventListener('click', handleSelectAll);
+            
+            // Save button
+            elements.saveBtn.addEventListener('click', handleSave);
+            
+            // Cancel button
+            elements.cancelBtn.addEventListener('click', handleCancel);
+        }
+        
+        /**
+         * Setup column headers in the table
+         */
+        function setupColumnHeaders() {
+            const headerRow = elements.table.querySelector('thead tr');
+            
+            // Add column headers
+            config.columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column.label;
+                if (column.width) {
+                    th.style.width = column.width;
+                }
+                if (column.class) {
+                    th.classList.add(column.class);
+                }
+                headerRow.appendChild(th);
+            });
+            
+            // Add footer cells for totals
+            if (config.behavior.calculateTotals) {
+                const footerRow = elements.tableFooter.querySelector('tr');
+                
+                config.columns.forEach(column => {
+                    const td = document.createElement('td');
+                    if (column.calculateTotal) {
+                        td.dataset.field = column.fieldName;
+                        if (column.class) {
+                            td.classList.add(column.class);
+                        }
+                    }
+                    footerRow.appendChild(td);
+                });
+            }
+        }
+        
+        /**
+         * Setup filter controls based on config
+         */
+        function setupFilterControls() {
+            if (!config.display.showFilters || !config.filters || config.filters.length === 0) {
+                return;
+            }
+            
+            config.filters.forEach(filter => {
+                const filterGroup = document.createElement('div');
+                filterGroup.className = 'filter-group';
+                
+                const label = document.createElement('label');
+                label.textContent = filter.label;
+                filterGroup.appendChild(label);
+                
+                if (filter.type === 'select') {
+                    const select = document.createElement('select');
+                    select.dataset.field = filter.fieldName;
+                    
+                    filter.options.forEach(option => {
+                        const optElement = document.createElement('option');
+                        optElement.value = option.value;
+                        optElement.textContent = option.label;
+                        
+                        if (option.value === filter.defaultValue) {
+                            optElement.selected = true;
+                            state.filters[filter.fieldName] = filter.defaultValue;
+                        }
+                        
+                        select.appendChild(optElement);
+                    });
+                    
+                    select.addEventListener('change', () => {
+                        state.filters[filter.fieldName] = select.value;
+                        applyFiltersAndSearch();
+                    });
+                    
+                    filterGroup.appendChild(select);
+                }
+                
+                elements.filterControls.appendChild(filterGroup);
+            });
+        }
+        
+        /**
+         * Load data from the API
+         */
+        function loadData() {
+            setLoading(true);
+            
+            // Fetch items and relationships in parallel
+            Promise.all([
+                fetchItems(),
+                fetchRelationships()
+            ])
+            .then(([itemsData, relationshipsData]) => {
+                // Process the data
+                state.items = itemsData.map(item => ({
+                    ...item,
+                    selected: false, // Will be updated based on relationships
+                    relationships: [] // Will be populated with relationship records
+                }));
+                
+                state.relationships = relationshipsData;
+                
+                // Match relationships to items
+                matchRelationshipsToItems();
+                
+                // Apply initial filters and search
+                applyFiltersAndSearch();
+                
+                // Update the UI
+                renderTable();
+                updatePagination();
+                
+                if (config.behavior.calculateTotals) {
+                    updateColumnTotals();
+                    elements.tableFooter.style.display = 'table-footer-group';
+                }
+                
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                alert('Error loading data. Please try again.');
+                setLoading(false);
+            });
+        }
+        
+        /**
+         * Fetch items from the API
+         * @returns {Promise<Array>} Promise resolving to array of items
+         */
+        function fetchItems() {
+            // In a real implementation, this would make an API request
+            // For demo purposes, we'll return mock data
+            
+            // Simulating API request delay
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // Mock data - replace with actual API call
+                    const mockItems = [];
+                    
+                    // Generate 100 mock items
+                    for (let i = 1; i <= 100; i++) {
+                        mockItems.push({
+                            id: i,
+                            label: `Item ${i}`,
+                            status: ['active', 'pending', 'completed'][Math.floor(Math.random() * 3)],
+                            category: ['A', 'B', 'C'][Math.floor(Math.random() * 3)]
+                        });
+                    }
+                    
+                    resolve(mockItems);
+                    
+                    // In a real implementation, use fetch:
+                    /*
+                    return fetch(`${config.api.getItems}?parentId=${config.parentId}`, {
+                        method: 'GET',
+                        headers: config.api.headers
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    });
+                    */
+                }, 500);
+            });
+        }
+        
+        /**
+         * Fetch relationships from the API
+         * @returns {Promise<Array>} Promise resolving to array of relationships
+         */
+        function fetchRelationships() {
+            // In a real implementation, this would make an API request
+            // For demo purposes, we'll return mock data
+            
+            // Simulating API request delay
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // Mock data - replace with actual API call
+                    const mockRelationships = [];
+                    
+                    // Generate mock relationships for random items
+                    for (let i = 1; i <= 15; i++) {
+                        const itemId = Math.floor(Math.random() * 100) + 1;
+                        
+                        mockRelationships.push({
+                            id: i,
+                            itemId: itemId,
+                            notes: `Notes for Item ${itemId}`,
+                            assignment_date: new Date().toISOString().split('T')[0],
+                            status: ['active', 'pending', 'completed'][Math.floor(Math.random() * 3)],
+                            amount: Math.floor(Math.random() * 10000) / 100
+                        });
+                    }
+                    
+                    resolve(mockRelationships);
+                    
+                    // In a real implementation, use fetch:
+                    /*
+                    return fetch(`${config.api.getRelationships}?parentId=${config.parentId}`, {
+                        method: 'GET',
+                        headers: config.api.headers
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    });
+                    */
+                }, 500);
+            });
+        }
+        
+        /**
+         * Match relationships to their corresponding items
+         */
+        function matchRelationshipsToItems() {
+            // Create a map for faster lookup
+            const itemsMap = new Map();
+            state.items.forEach(item => {
+                itemsMap.set(item.id, item);
+            });
+            
+            // Match relationships to items
+            state.relationships.forEach(relationship => {
+                const item = itemsMap.get(relationship.itemId);
+                if (item) {
+                    item.selected = true;
+                    item.relationships.push(relationship);
+                    state.selectedItems.add(item.id);
+                }
+            });
+        }
+        
+        /**
+         * Apply filters and search to the items
+         */
+        function applyFiltersAndSearch() {
+            let filtered = [...state.items];
+            
+            // Apply search filter if there's a search term
+            if (state.search) {
+                const searchLower = state.search.toLowerCase();
+                filtered = filtered.filter(item => 
+                    item.label.toLowerCase().includes(searchLower)
+                );
+            }
+            
+            // Apply other filters
+            if (Object.keys(state.filters).length > 0) {
+                filtered = filtered.filter(item => {
+                    for (const [field, value] of Object.entries(state.filters)) {
+                        // Skip empty filter values
+                        if (!value) continue;
+                        
+                        // If the item doesn't have this field or the value doesn't match, filter it out
+                        if (!item[field] || item[field] !== value) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+            }
+            
+            // Group selected items at the top if configured
+            if (config.behavior.groupSelectedAtTop) {
+                filtered.sort((a, b) => {
+                    // First sort by selection status
+                    if (a.selected && !b.selected) return -1;
+                    if (!a.selected && b.selected) return 1;
+                    
+                    // Then sort by label
+                    return a.label.localeCompare(b.label);
+                });
+            }
+            
+            state.filteredItems = filtered;
+            
+            // Reset pagination to first page
+            state.pagination.currentPage = 1;
+            state.pagination.totalPages = Math.ceil(
+                state.filteredItems.length / state.pagination.itemsPerPage
+            );
+            
+            // Update displayed items based on pagination
+            updateDisplayedItems();
+        }
+        
+        /**
+         * Update the items to display based on pagination
+         */
+        function updateDisplayedItems() {
+            const start = (state.pagination.currentPage - 1) * state.pagination.itemsPerPage;
+            const end = start + state.pagination.itemsPerPage;
+            
+            state.displayedItems = state.filteredItems.slice(start, end);
+        }
+        
+        /**
+         * Render the table with the current displayed items
+         */
+        function renderTable() {
+            elements.tbody.innerHTML = '';
+            
+            state.displayedItems.forEach(item => {
+                const row = document.createElement('tr');
+                if (item.selected) {
+                    row.classList.add('selected');
+                } else if (config.behavior.disableUncheckedRows) {
+                    row.classList.add('disabled-row');
+                }
+                
+                // Checkbox cell
+                const checkboxCell = document.createElement('td');
+                checkboxCell.className = 'checkbox-cell';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.selected;
+                checkbox.addEventListener('change', () => handleItemSelect(item, checkbox.checked));
+                
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+                
+                // Item label cell
+                const labelCell = document.createElement('td');
+                labelCell.textContent = item.label;
+                row.appendChild(labelCell);
+                
+                // Add cells for each column
+                config.columns.forEach(column => {
+                    const cell = document.createElement('td');
+                    if (column.class) {
+                        cell.classList.add(column.class);
+                    }
+                    
+                    // Get the relationship value if it exists
+                    const relationship = item.relationships && item.relationships.length > 0 
+                        ? item.relationships[0] 
+                        : null;
+                    
+                    const value = relationship ? relationship[column.fieldName] : column.defaultValue || '';
+                    
+                    // Create input based on column type
+                    let input;
+                    switch (column.type) {
+                        case 'select':
+                            input = document.createElement('select');
+                            input.className = 'input-field';
+                            
+                            column.options.forEach(option => {
+                                const optElement = document.createElement('option');
+                                optElement.value = option.value;
+                                optElement.textContent = option.label;
+                                
+                                if (option.value === value) {
+                                    optElement.selected = true;
+                                }
+                                
+                                input.appendChild(optElement);
+                            });
+                            break;
+                            
+                        case 'textarea':
+                            input = document.createElement('textarea');
+                            input.className = 'input-field';
+                            input.value = value;
+                            break;
+                            
+                        case 'number':
+                            input = document.createElement('input');
+                            input.type = 'number';
+                            input.className = 'input-field';
+                            input.value = value;
+                            input.step = '0.01';
+                            break;
+                            
+                        case 'date':
+                            input = document.createElement('input');
+                            input.type = 'date';
+                            input.className = 'input-field';
+                            input.value = value;
+                            break;
+                            
+                        default: // text
+                            input = document.createElement('input');
+                            input.type = 'text';
+                            input.className = 'input-field';
+                            input.value = value;
+                            break;
+                    }
+                    
+                    // Set disabled state based on selection and config
+                    if (!item.selected && config.behavior.disableUncheckedRows) {
+                        input.disabled = true;
+                    }
+                    
+                    // Add event listeners for changes
+                    input.addEventListener('change', () => {
+                        handleFieldChange(item, column.fieldName, input.value);
+                    });
+                    
+                    cell.appendChild(input);
+                    row.appendChild(cell);
+                });
+                
+                elements.tbody.appendChild(row);
+            });
+        }
+        
+        /**
+         * Update the pagination controls
+         */
+        function updatePagination() {
+            elements.paginationControls.innerHTML = '';
+            
+            if (state.pagination.totalPages <= 1) {
+                return;
+            }
+            
+            // First page button
+            const firstBtn = document.createElement('button');
+            firstBtn.innerHTML = '&laquo;';
+            firstBtn.title = 'First Page';
+            firstBtn.disabled = state.pagination.currentPage === 1;
+            firstBtn.addEventListener('click', () => goToPage(1));
+            elements.paginationControls.appendChild(firstBtn);
+            
+            // Previous page button
+            const prevBtn = document.createElement('button');
+            prevBtn.innerHTML = '&lsaquo;';
+            prevBtn.title = 'Previous Page';
+            prevBtn.disabled = state.pagination.currentPage === 1;
+            prevBtn.addEventListener('click', () => goToPage(state.pagination.currentPage - 1));
+            elements.paginationControls.appendChild(prevBtn);
+            
+            // Page number buttons
+            let startPage = Math.max(1, state.pagination.currentPage - 2);
+            let endPage = Math.min(state.pagination.totalPages, startPage + 4);
+            
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.title = `Page ${i}`;
+                if (i === state.pagination.currentPage) {
+                    pageBtn.classList.add('active');
+                }
+                pageBtn.addEventListener('click', () => goToPage(i));
+                elements.paginationControls.appendChild(pageBtn);
+            }
+            
+            // Next page button
+            const nextBtn = document.createElement('button');
+            nextBtn.innerHTML = '&rsaquo;';
+            nextBtn.title = 'Next Page';
+            nextBtn.disabled = state.pagination.currentPage === state.pagination.totalPages;
+            nextBtn.addEventListener('click', () => goToPage(state.pagination.currentPage + 1));
+            elements.paginationControls.appendChild(nextBtn);
+            
+            // Last page button
+            const lastBtn = document.createElement('button');
+            lastBtn.innerHTML = '&raquo;';
+            lastBtn.title = 'Last Page';
+            lastBtn.disabled = state.pagination.currentPage === state.pagination.totalPages;
+            lastBtn.addEventListener('click', () => goToPage(state.pagination.totalPages));
+            elements.paginationControls.appendChild(lastBtn);
+        }
+        
+        /**
+         * Go to a specific page
+         * @param {number} page - The page number to go to
+         */
+        function goToPage(page) {
+            if (page < 1 || page > state.pagination.totalPages) {
+                return;
+            }
+            
+            state.pagination.currentPage = page;
+            updateDisplayedItems();
+            renderTable();
+            updatePagination();
+            
+            if (config.behavior.calculateTotals) {
+                updateColumnTotals();
+            }
+        }
+        
+        /**
+         * Handle search input
+         */
+        function handleSearch() {
+            state.search = elements.searchInput.value.trim();
+            applyFiltersAndSearch();
+            renderTable();
+            updatePagination();
+            
+            if (config.behavior.calculateTotals) {
+                updateColumnTotals();
+            }
+        }
+        
+        /**
+         * Handle per page change
+         */
+        function handlePerPageChange() {
+            state.pagination.itemsPerPage = parseInt(elements.perPageSelect.value, 10);
+            state.pagination.totalPages = Math.ceil(
+                state.filteredItems.length / state.pagination.itemsPerPage
+            );
+            
+            // If current page is now out of bounds, adjust it
+            if (state.pagination.currentPage > state.pagination.totalPages) {
+                state.pagination.currentPage = state.pagination.totalPages || 1;
+            }
+            
+            updateDisplayedItems();
+            renderTable();
+            updatePagination();
+            
+            if (config.behavior.calculateTotals) {
+                updateColumnTotals();
+            }
+        }
+        
+        /**
+         * Handle select all/none button click
+         */
+        function handleSelectAll() {
+            state.selectAll = !state.selectAll;
+            
+            state.filteredItems.forEach(item => {
+                handleItemSelect(item, state.selectAll, true);
+            });
+            
+            renderTable();
+            
+            if (config.behavior.calculateTotals) {
+                updateColumnTotals();
+            }
+        }
+        
+        /**
+         * Handle item selection change
+         * @param {Object} item - The item being selected/deselected
+         * @param {boolean} selected - Whether the item is now selected
+         * @param {boolean} [skipRender=false] - Whether to skip re-rendering
+         */
+        function handleItemSelect(item, selected, skipRender = false) {
+            // Update the item's selection state
+            item.selected = selected;
+            
+            // Update the selectedItems set
+            if (selected) {
+                state.selectedItems.add(item.id);
+                
+                // If this is a newly selected item, create a relationship record for it
+                if (!item.relationships || item.relationships.length === 0) {
+                    const newRelationship = {
+                        id: null, // null ID indicates it's new
+                        itemId: item.id
+                    };
+                    
+                    // Add default values for all columns
+                    config.columns.forEach(column => {
+                        newRelationship[column.fieldName] = column.defaultValue !== undefined 
+                            ? column.defaultValue 
+                            : '';
+                    });
+                    
+                    item.relationships = [newRelationship];
+                    state.changes.added.push(newRelationship);
+                    state.changesMade = true;
+                } else if (state.changes.deleted.some(rel => rel.itemId === item.id)) {
+                    // If this item was previously deleted, move it back to updated
+                    state.changes.deleted = state.changes.deleted.filter(rel => rel.itemId !== item.id);
+                    state.changes.updated.push(item.relationships[0]);
+                    state.changesMade = true;
+                }
+            } else {
+                state.selectedItems.delete(item.id);
+                
+                // If this is a deselected item with an existing relationship, mark it for deletion
+                if (item.relationships && item.relationships.length > 0) {
+                    const relationship = item.relationships[0];
+                    
+                    // Only mark for deletion if it has an ID (meaning it exists in the database)
+                    if (relationship.id) {
+                        state.changes.deleted.push(relationship);
+                        
+                        // Remove from added or updated if it was there
+                        state.changes.added = state.changes.added.filter(r => r.itemId !== item.id);
+                        state.changes.updated = state.changes.updated.filter(r => r.itemId !== item.id);
+                    } else {
+                        // If it was newly added, just remove it from added
+                        state.changes.added = state.changes.added.filter(r => r.itemId !== item.id);
+                    }
+                    
+                    state.changesMade = true;
+                }
+            }
+            
+            if (!skipRender) {
+                renderTable();
+                
+                if (config.behavior.calculateTotals) {
+                    updateColumnTotals();
+                }
+            }
+        }
+        
+        /**
+         * Handle field value change
+         * @param {Object} item - The item being modified
+         * @param {string} fieldName - The name of the field being changed
+         * @param {any} value - The new value
+         */
+        function handleFieldChange(item, fieldName, value) {
+            if (!item.selected) {
+                // If the item is not selected, select it first
+                handleItemSelect(item, true);
+                return;
+            }
+            
+            // Get the relationship record
+            const relationship = item.relationships && item.relationships.length > 0 
+                ? item.relationships[0] 
+                : null;
+            
+            if (!relationship) {
+                return;
+            }
+            
+            // Update the field value
+            relationship[fieldName] = value;
+            
+            // Mark as changed
+            state.changesMade = true;
+            
+            // Add to appropriate change list if not already there
+            if (relationship.id) {
+                // Existing relationship - update
+                if (!state.changes.updated.some(r => r.id === relationship.id)) {
+                    state.changes.updated.push(relationship);
+                }
+            } else {
+                // New relationship - may already be in added list
+                if (!state.changes.added.some(r => r.itemId === item.id)) {
+                    state.changes.added.push(relationship);
+                }
+            }
+            
+            if (config.behavior.calculateTotals) {
+                updateColumnTotals();
+            }
+        }
+        
+        /**
+         * Update totals for columns that need them
+         */
+        function updateColumnTotals() {
+            config.columns.forEach((column, index) => {
+                if (!column.calculateTotal) {
+                    return;
+                }
+                
+                const footerCell = elements.tableFooter.querySelector(`td[data-field="${column.fieldName}"]`);
+                if (!footerCell) {
+                    return;
+                }
+                
+                // Calculate total across all selected items
+                let total = 0;
+                
+                state.items.forEach(item => {
+                    if (item.selected && item.relationships && item.relationships.length > 0) {
+                        const relationship = item.relationships[0];
+                        const value = relationship[column.fieldName];
+                        
+                        if (value !== null && value !== undefined && !isNaN(parseFloat(value))) {
+                            total += parseFloat(value);
+                        }
+                    }
+                });
+                
+                // Format the total
+                let formattedTotal = total;
+                if (column.formatValue) {
+                    formattedTotal = column.formatValue(total);
+                }
+                
+                footerCell.textContent = formattedTotal;
+            });
+        }
+        
+        /**
+         * Handle save button click
+         */
+        function handleSave() {
+            setLoading(true);
+            
+            // In a real implementation, this would make an API request to save the changes
+            // For demo purposes, we'll simulate a successful save
+            
+            console.log('Changes to save:', {
+                added: state.changes.added,
+                updated: state.changes.updated,
+                deleted: state.changes.deleted
+            });
+            
+            // Simulating API call
+            setTimeout(() => {
+                setLoading(false);
+                state.changesMade = false;
+                
+                alert('Changes saved successfully!');
+                
+                // Redirect if configured
+                if (config.behavior.redirectUrl) {
+                    window.location.href = config.behavior.redirectUrl;
+                }
+            }, 1000);
+            
+            // In a real implementation, use fetch:
+            /*
+            fetch(config.api.saveChanges, {
+                method: 'POST',
+                headers: config.api.headers,
+                body: JSON.stringify({
+                    parentId: config.parentId,
+                    added: state.changes.added,
+                    updated: state.changes.updated,
+                    deleted: state.changes.deleted.map(rel => rel.id)
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                setLoading(false);
+                state.changesMade = false;
+                
+                alert('Changes saved successfully!');
+                
+                // Redirect if configured
+                if (config.behavior.redirectUrl) {
+                    window.location.href = config.behavior.redirectUrl;
+                }
+            })
+            .catch(error => {
+                console.error('Error saving changes:', error);
+                alert('Error saving changes. Please try again.');
+                setLoading(false);
+            });
+            */
+        }
+        
+        /**
+         * Handle cancel button click
+         */
+        function handleCancel() {
+            if (state.changesMade && config.behavior.confirmCancel) {
+                if (!confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+                    return;
+                }
+            }
+            
+            // Redirect if configured
+            if (config.behavior.redirectUrl) {
+                window.location.href = config.behavior.redirectUrl;
+            } else {
+                // Otherwise, just reload the page
+                window.location.reload();
+            }
+        }
+        
+        /**
+         * Set the loading state
+         * @param {boolean} isLoading - Whether the page is loading
+         */
+        function setLoading(isLoading) {
+            state.loading = isLoading;
+            elements.loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+        }
+        
+        /**
+         * Get the parent ID from the URL
+         * @returns {number} The parent ID
+         */
+        function getParentIdFromUrl() {
+            // In a real implementation, get the parent ID from the URL
+            // For example:
+            // const urlParams = new URLSearchParams(window.location.search);
+            // return parseInt(urlParams.get('parentId') || '0', 10);
+            
+            // For demo purposes, return a fixed value
+            return 123;
+        }
+        
+        // Initialize the component when the DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

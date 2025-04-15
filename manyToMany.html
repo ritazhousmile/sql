@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add / Remove assignments</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #33ccff 0%, #6666ff 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .dialog-container {
+            width: 550px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .dialog-header {
+            background-color: #7954ad;
+            color: white;
+            padding: 15px 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .dialog-instructions {
+            padding: 12px 20px;
+            border-bottom: 1px solid #ddd;
+            color: #333;
+        }
+        
+        .search-container {
+            padding: 10px 20px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #4682B4;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        
+        .table-header {
+            display: flex;
+            padding: 10px 20px;
+            background-color: #e2d5ed;
+            border-top: 1px solid #d0c3e0;
+            border-bottom: 1px solid #d0c3e0;
+            font-weight: bold;
+        }
+        
+        .table-header .select-col {
+            width: 50px;
+        }
+        
+        .table-header .item-col {
+            flex: 1;
+        }
+        
+        .table-body {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .table-row {
+            display: flex;
+            padding: 10px 20px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+        
+        .table-row:nth-child(odd) {
+            background-color: #f2e9f7;
+        }
+        
+        .table-row:nth-child(even) {
+            background-color: #ffffff;
+        }
+        
+        .table-row .select-col {
+            width: 50px;
+        }
+        
+        .table-row .item-col {
+            flex: 1;
+        }
+        
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            align-items: center;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .pagination-controls button {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .pagination-controls button.active {
+            background-color: #4682B4;
+            color: white;
+            border-color: #4682B4;
+        }
+        
+        .pagination-controls button:hover:not(.active) {
+            background-color: #f0f0f0;
+        }
+        
+        .per-page {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .per-page select {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .select-all-btn {
+            background-color: #4682B4;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .cancel-btn {
+            background-color: #f5f5f5;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4682B4;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dialog-container">
+        <div class="dialog-header">
+            Add / Remove assignments
+        </div>
+        
+        <div class="dialog-instructions">
+            Select each assignment you wish to add.
+        </div>
+        
+        <div class="search-container">
+            <input type="text" class="search-input" id="search-input" placeholder="Type to search...">
+        </div>
+        
+        <div class="table-header">
+            <div class="select-col">Select</div>
+            <div class="item-col">Diary</div>
+        </div>
+        
+        <div class="table-body" id="table-body">
+            <!-- Rows will be populated dynamically -->
+        </div>
+        
+        <div class="pagination">
+            <div class="pagination-controls" id="pagination-controls">
+                <!-- Pagination buttons will be added here -->
+            </div>
+            <div class="per-page">
+                <span>Per Page:</span>
+                <select id="per-page-select">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="select-all-btn" id="select-all-btn">Select All/None</button>
+            <div>
+                <button class="save-btn" id="save-btn">Save</button>
+                <button class="cancel-btn" id="cancel-btn">Cancel</button>
+            </div>
+        </div>
+        
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration object
+        const config = {
+            // API endpoints - replace with your actual HighSystems API endpoints
+            api: {
+                // Get all available items with their selection status for the current parent
+                getItems: '/api/relationships/items',
+                
+                // Get existing relationships for the current parent
+                getRelationships: '/api/relationships/current',
+                
+                // Save relationship changes
+                saveChanges: '/api/relationships/save',
+                
+                // API request headers
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Add authentication headers if needed
+                    // 'Authorization': 'Bearer YOUR_TOKEN'
+                }
+            },
+            
+            // The ID of the parent record
+            parentId: getParentIdFromUrl(),
+            
+            // Settings
+            settings: {
+                // Default items per page
+                defaultPerPage: 50,
+                
+                // Whether to group selected items at the top
+                groupSelectedAtTop: true,
+                
+                // When true, clicking Cancel with unsaved changes will prompt for confirmation
+                confirmCancel: true,
+                
+                // Redirect URL after save/cancel
+                // If null, stays on the same page
+                redirectUrl: null
+            }
+        };
+        
+        // State management
+        const state = {
+            items: [],               // All available items
+            relationships: [],       // Current relationships
+            filteredItems: [],       // Items after filtering
+            displayedItems: [],      // Items currently displayed (after pagination)
+            selectedItems: new Set(),// Set of selected item IDs
+            changes: {              // Track changes for saving
+                added: [],
+                deleted: []
+            },
+            search: '',              // Current search term
+            pagination: {
+                currentPage: 1,
+                itemsPerPage: config.settings.defaultPerPage,
+                totalPages: 1
+            },
+            selectAll: false,        // Whether "Select All" is active
+            changesMade: false,      // Whether any changes have been made
+            loading: false           // Whether data is being loaded
+        };
+        
+        // DOM elements
+        const elements = {
+            tableBody: document.getElementById('table-body'),
+            searchInput: document.getElementById('search-input'),
+            paginationControls: document.getElementById('pagination-controls'),
+            perPageSelect: document.getElementById('per-page-select'),
+            selectAllBtn: document.getElementById('select-all-btn'),
+            saveBtn: document.getElementById('save-btn'),
+            cancelBtn: document.getElementById('cancel-btn'),
+            loadingOverlay: document.getElementById('loading-overlay')
+        };
+        
+        /**
+         * Initialize the component
+         */
+        function init() {
+            setupEventListeners();
+            loadData();
+        }
+        
+        /**
+         * Set up event listeners for the UI components
+         */
+        function setupEventListeners() {
+            // Search input
+            elements.searchInput.addEventListener('input', handleSearch);
+            
+            // Per page select
+            elements.perPageSelect.addEventListener('change', handlePerPageChange);
+            
+            // Select All button
+            elements.selectAllBtn.addEventListener('click', handleSelectAll);
+            
+            // Save button
+            elements.saveBtn.addEventListener('click', handleSave);
+            
+            // Cancel button
+            elements.cancelBtn.addEventListener('click', handleCancel);
+        }
+        
+        /**
+         * Load data from the API
+         */
+        function loadData() {
+            setLoading(true);
+            
+            // Fetch items and relationships in parallel
+            Promise.all([
+                fetchItems(),
+                fetchRelationships()
+            ])
+            .then(([itemsData, relationshipsData]) => {
+                // Process the data
+                state.items = itemsData;
+                state.relationships = relationshipsData;
+                
+                // Mark items that have relationships as selected
+                const relationshipItemIds = new Set(state.relationships.map(rel => rel.itemId));
+                
+                state.items.forEach(item => {
+                    item.selected = relationshipItemIds.has(item.id);
+                    if (item.selected) {
+                        state.selectedItems.add(item.id);
+                    }
+                });
+                
+                // Apply initial filters and search
+                applyFiltersAndSearch();
+                
+                // Update the UI
+                renderTable();
+                updatePagination();
+                
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                alert('Error loading data. Please try again.');
+                setLoading(false);
+            });
+        }
+        
+        /**
+         * Fetch items from the API
+         * @returns {Promise<Array>} Promise resolving to array of items
+         */
+        function fetchItems() {
+            // In a real implementation, this would make an API request
+            // For demo purposes, we'll return mock data
+            
+            // Simulating API request delay
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // Mock data - replace with actual API call
+                    const mockItems = [
+                        { id: 1, label: "Alive & Well Check" },
+                        { id: 2, label: "Background Check" },
+                        { id: 3, label: "Death Investigation" },
+                        { id: 4, label: "DO NOT USE - IME Ortho/Neuro - Spine" },
+                        { id: 5, label: "DO NOT USE - Peer Review Ortho/Neuro - Spine" },
+                        { id: 6, label: "Fiduciary Services" },
+                        { id: 7, label: "IME - Audiologist" },
+                        { id: 8, label: "IME - Cardiologist" },
+                        { id: 9, label: "IME - Dentist" },
+                        { id: 10, label: "IME - Dermatologist - Skin" },
+                        { id: 11, label: "IME - Endocrinologist" },
+                        { id: 12, label: "IME - ENT/Otolaryngologist" },
+                        { id: 13, label: "IME - Gastro" },
+                        { id: 14, label: "IME - General Surgeon - Hernia" },
+                        { id: 15, label: "IME - Hematologist" },
+                        { id: 16, label: "IME - Neurologist" },
+                        { id: 17, label: "IME - Neurosurgeon" },
+                        { id: 18, label: "IME - OB/GYN" },
+                        { id: 19, label: "IME - Occupational Medicine" },
+                        { id: 20, label: "IME - Oncologist" },
+                        { id: 21, label: "IME - Ophthalmologist" },
+                        { id: 22, label: "IME - Orthopedist - Foot/Ankle" },
+                        { id: 23, label: "IME - Orthopedist - General" },
+                        { id: 24, label: "IME - Orthopedist - Hand" },
+                        { id: 25, label: "IME - Orthopedist - Hip" },
+                        { id: 26, label: "IME - Orthopedist - Knee" },
+                        { id: 27, label: "IME - Orthopedist - Shoulder" },
+                        { id: 28, label: "IME - Orthopedist - Spine" }
+                    ];
+                    
+                    resolve(mockItems);
+                    
+                    // In a real implementation, use fetch:
+                    /*
+                    return fetch(`${config.api.getItems}?parentId=${config.parentId}`, {
+                        method: 'GET',
+                        headers: config.api.headers
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    });
+                    */
+                }, 500);
+            });
+        }
+        
+        /**
+         * Fetch relationships from the API
+         * @returns {Promise<Array>} Promise resolving to array of relationships
+         */
+        function fetchRelationships() {
+            // In a real implementation, this would make an API request
+            // For demo purposes, we'll return mock data
+            
+            // Simulating API request delay
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // Mock data - replace with actual API call
+                    const mockRelationships = [
+                        { id: 1, itemId: 1 },  // Alive & Well Check
+                        { id: 2, itemId: 6 },  // Fiduciary Services
+                        { id: 3, itemId: 8 }   // IME - Cardiologist
+                    ];
+                    
+                    resolve(mockRelationships);
+                    
+                    // In a real implementation, use fetch:
+                    /*
+                    return fetch(`${config.api.getRelationships}?parentId=${config.parentId}`, {
+                        method: 'GET',
+                        headers: config.api.headers
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    });
+                    */
+                }, 500);
+            });
+        }
+        
+        /**
+         * Apply filters and search to the items
+         */
+        function applyFiltersAndSearch() {
+            let filtered = [...state.items];
+            
+            // Apply search filter if there's a search term
+            if (state.search) {
+                const searchLower = state.search.toLowerCase();
+                filtered = filtered.filter(item => 
+                    item.label.toLowerCase().includes(searchLower)
+                );
+            }
+            
+            // Group selected items at the top if configured
+            if (config.settings.groupSelectedAtTop) {
+                filtered.sort((a, b) => {
+                    // First sort by selection status
+                    if (a.selected && !b.selected) return -1;
+                    if (!a.selected && b.selected) return 1;
+                    
+                    // Then sort by label
+                    return a.label.localeCompare(b.label);
+                });
+            }
+            
+            state.filteredItems = filtered;
+            
+            // Reset pagination to first page
+            state.pagination.currentPage = 1;
+            state.pagination.totalPages = Math.ceil(
+                state.filteredItems.length / state.pagination.itemsPerPage
+            );
+            
+            // Update displayed items based on pagination
+            updateDisplayedItems();
+        }
+        
+        /**
+         * Update the items to display based on pagination
+         */
+        function updateDisplayedItems() {
+            const start = (state.pagination.currentPage - 1) * state.pagination.itemsPerPage;
+            const end = start + state.pagination.itemsPerPage;
+            
+            state.displayedItems = state.filteredItems.slice(start, end);
+        }
+        
+        /**
+         * Render the table with the current displayed items
+         */
+        function renderTable() {
+            elements.tableBody.innerHTML = '';
+            
+            state.displayedItems.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'table-row';
+                
+                // Checkbox cell
+                const selectCol = document.createElement('div');
+                selectCol.className = 'select-col';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'checkbox';
+                checkbox.checked = item.selected;
+                checkbox.addEventListener('change', () => handleItemSelect(item, checkbox.checked));
+                
+                selectCol.appendChild(checkbox);
+                
+                // Item label cell
+                const itemCol = document.createElement('div');
+                itemCol.className = 'item-col';
+                itemCol.textContent = item.label;
+                
+                // Add cells to row
+                row.appendChild(selectCol);
+                row.appendChild(itemCol);
+                
+                // Add row to table
+                elements.tableBody.appendChild(row);
+            });
+        }
+        
+        /**
+         * Update the pagination controls
+         */
+        function updatePagination() {
+            elements.paginationControls.innerHTML = '';
+            
+            if (state.pagination.totalPages <= 1) {
+                return;
+            }
+            
+            // First page button
+            const firstBtn = document.createElement('button');
+            firstBtn.innerHTML = '&laquo;';
+            firstBtn.title = 'First Page';
+            firstBtn.disabled = state.pagination.currentPage === 1;
+            firstBtn.addEventListener('click', () => goToPage(1));
+            elements.paginationControls.appendChild(firstBtn);
+            
+            // Previous page button
+            const prevBtn = document.createElement('button');
+            prevBtn.innerHTML = '&lsaquo;';
+            prevBtn.title = 'Previous Page';
+            prevBtn.disabled = state.pagination.currentPage === 1;
+            prevBtn.addEventListener('click', () => goToPage(state.pagination.currentPage - 1));
+            elements.paginationControls.appendChild(prevBtn);
+            
+            // Page number buttons
+            let startPage = Math.max(1, state.pagination.currentPage - 2);
+            let endPage = Math.min(state.pagination.totalPages, startPage + 4);
+            
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.title = `Page ${i}`;
+                if (i === state.pagination.currentPage) {
+                    pageBtn.classList.add('active');
+                }
+                pageBtn.addEventListener('click', () => goToPage(i));
+                elements.paginationControls.appendChild(pageBtn);
+            }
+            
+            // Next page button
+            const nextBtn = document.createElement('button');
+            nextBtn.innerHTML = '&rsaquo;';
+            nextBtn.title = 'Next Page';
+            nextBtn.disabled = state.pagination.currentPage === state.pagination.totalPages;
+            nextBtn.addEventListener('click', () => goToPage(state.pagination.currentPage + 1));
+            elements.paginationControls.appendChild(nextBtn);
+            
+            // Last page button
+            const lastBtn = document.createElement('button');
+            lastBtn.innerHTML = '&raquo;';
+            lastBtn.title = 'Last Page';
+            lastBtn.disabled = state.pagination.currentPage === state.pagination.totalPages;
+            lastBtn.addEventListener('click', () => goToPage(state.pagination.totalPages));
+            elements.paginationControls.appendChild(lastBtn);
+        }
+        
+        /**
+         * Go to a specific page
+         * @param {number} page - The page number to go to
+         */
+        function goToPage(page) {
+            if (page < 1 || page > state.pagination.totalPages) {
+                return;
+            }
+            
+            state.pagination.currentPage = page;
+            updateDisplayedItems();
+            renderTable();
+            updatePagination();
+        }
+        
+        /**
+         * Handle search input
+         */
+        function handleSearch() {
+            state.search = elements.searchInput.value.trim();
+            applyFiltersAndSearch();
+            renderTable();
+            updatePagination();
+        }
+        
+        /**
+         * Handle per page change
+         */
+        function handlePerPageChange() {
+            state.pagination.itemsPerPage = parseInt(elements.perPageSelect.value, 10);
+            state.pagination.totalPages = Math.ceil(
+                state.filteredItems.length / state.pagination.itemsPerPage
+            );
+            
+            // If current page is now out of bounds, adjust it
+            if (state.pagination.currentPage > state.pagination.totalPages) {
+                state.pagination.currentPage = state.pagination.totalPages || 1;
+            }
+            
+            updateDisplayedItems();
+            renderTable();
+            updatePagination();
+        }
+        
+        /**
+         * Handle select all/none button click
+         */
+        function handleSelectAll() {
+            state.selectAll = !state.selectAll;
+            
+            state.filteredItems.forEach(item => {
+                handleItemSelect(item, state.selectAll, true);
+            });
+            
+            renderTable();
+        }
+        
+        /**
+         * Handle item selection change
+         * @param {Object} item - The item being selected/deselected
+         * @param {boolean} selected - Whether the item is now selected
+         * @param {boolean} [skipRender=false] - Whether to skip re-rendering
+         */
+        function handleItemSelect(item, selected, skipRender = false) {
+            // Update the item's selection state
+            item.selected = selected;
+            
+            // Update the selectedItems set
+            if (selected) {
+                state.selectedItems.add(item.id);
+                
+                // If not already in the relationships, add it
+                if (!state.relationships.some(rel => rel.itemId === item.id)) {
+                    const newRelationship = {
+                        id: null, // null ID indicates it's new
+                        itemId: item.id
+                    };
+                    
+                    state.changes.added.push(newRelationship);
+                    state.changesMade = true;
+                } else {
+                    // If previously marked for deletion, remove from deleted
+                    state.changes.deleted = state.changes.deleted.filter(id => id !== item.id);
+                    if (state.changes.deleted.length < state.relationships.length) {
+                        state.changesMade = true;
+                    }
+                }
+            } else {
+                state.selectedItems.delete(item.id);
+                
+                // If in the relationships, mark for deletion
+                const relationship = state.relationships.find(rel => rel.itemId === item.id);
+                if (relationship) {
+                    if (!state.changes.deleted.includes(item.id)) {
+                        state.changes.deleted.push(item.id);
+                        state.changesMade = true;
+                    }
+                    
+                    // If previously added, remove from added
+                    state.changes.added = state.changes.added.filter(rel => rel.itemId !== item.id);
+                }
+            }
+            
+            if (!skipRender) {
+                renderTable();
+            }
+        }
+        
+        /**
+         * Handle save button click
+         */
+        function handleSave() {
+            setLoading(true);
+            
+            // In a real implementation, this would make an API request to save the changes
+            // For demo purposes, we'll simulate a successful save
+            
+            console.log('Changes to save:', {
+                added: state.changes.added,
+                deleted: state.changes.deleted
+            });
+            
+            // Simulating API call
+            setTimeout(() => {
+                setLoading(false);
+                state.changesMade = false;
+                
+                alert('Changes saved successfully!');
+                
+                // Redirect if configured
+                if (config.settings.redirectUrl) {
+                    window.location.href = config.settings.redirectUrl;
+                }
+            }, 1000);
+            
+            // In a real implementation, use fetch:
+            /*
+            fetch(config.api.saveChanges, {
+                method: 'POST',
+                headers: config.api.headers,
+                body: JSON.stringify({
+                    parentId: config.parentId,
+                    added: state.changes.added.map(rel => rel.itemId),
+                    deleted: state.changes.deleted
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                setLoading(false);
+                state.changesMade = false;
+                
+                alert('Changes saved successfully!');
+                
+                // Redirect if configured
+                if (config.settings.redirectUrl) {
+                    window.location.href = config.settings.redirectUrl;
+                }
+            })
+            .catch(error => {
+                console.error('Error saving changes:', error);
+                alert('Error saving changes. Please try again.');
+                setLoading(false);
+            });
+            */
+        }
+        
+        /**
+         * Handle cancel button click
+         */
+        function handleCancel() {
+            if (state.changesMade && config.settings.confirmCancel) {
+                if (!confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+                    return;
+                }
+            }
+            
+            // Redirect if configured
+            if (config.settings.redirectUrl) {
+                window.location.href = config.settings.redirectUrl;
+            } else {
+                // Otherwise, just reload the page
+                window.location.reload();
+            }
+        }
+        
+        /**
+         * Set the loading state
+         * @param {boolean} isLoading - Whether the page is loading
+         */
+        function setLoading(isLoading) {
+            state.loading = isLoading;
+            elements.loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+        }
+        
+        /**
+         * Get the parent ID from the URL
+         * @returns {number} The parent ID
+         */
+        function getParentIdFromUrl() {
+            // In a real implementation, get the parent ID from the URL
+            // For example:
+            // const urlParams = new URLSearchParams(window.location.search);
+            // return parseInt(urlParams.get('parentId') || '0', 10);
+            
+            // For demo purposes, return a fixed value
+            return 123;
+        }
+        
+        // Initialize the component when the DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
